@@ -12,8 +12,7 @@ Telegram-бот для классификации отзывов как наст
 1. Клонируйте репозиторий:
 
     ```bash
-    git clone https://github.com/yourusername/fake-review-classifier-bot.git
-    cd fake-review-classifier-bot
+    git clone https://github.com/tniur/ReviewGuard.git
     ```
 
 2. Создайте виртуальное окружение и активируйте его:
