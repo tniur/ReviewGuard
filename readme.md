@@ -1,4 +1,4 @@
-# Fake Review Classifier Bot
+# ReviewGuard Bot
 
 Telegram-бот для классификации отзывов как настоящих или фейковых.
 
