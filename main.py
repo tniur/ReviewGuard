@@ -35,26 +35,9 @@ tokenizer = ElectraTokenizer.from_pretrained("./saved_model")
 nltk.download("stopwords")
 stop_words = set(stopwords.words("english"))
 
-def clean_text(text):
-    text = text.lower()  # Приведение к нижнему регистру
-    text = re.sub(f"[{re.escape(string.punctuation)}]", "", text)  # Удаление пунктуации
-    text = re.sub(r"\\d+", "", text)  # Удаление чисел
-    words = text.split()
-    words = [word for word in words if word not in stop_words]  # Удаление стоп-слов
-    return " ".join(words)
-
 def preprocess_text(text):
     encoding = tokenizer(text, truncation=True, padding=True, max_length=128, return_tensors="pt").to(device)
     return encoding
-
-# === Функция для генерации дополнительных признаков ===
-def extract_features(text):
-    review_length = len(text.split())  # Количество слов
-    avg_word_length = np.mean([len(word) for word in text.split()]) if text.split() else 0  # Средняя длина слова
-    num_uppercase = sum(1 for c in text if c.isupper())  # Количество заглавных букв
-
-    features = np.array([[review_length, avg_word_length, num_uppercase]])
-    return scaler.transform(features)
 
 # Обработчик команды /start
 @dp.message(Command("start"))
