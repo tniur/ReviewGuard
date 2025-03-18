@@ -1,17 +1,15 @@
 import numpy as np
-import tensorflow as tf
+import torch
 import re
 import string
 from nltk.corpus import stopwords
 import nltk
 import asyncio
 import logging
-import joblib
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.types import Message
-from tensorflow.keras.preprocessing.text import tokenizer_from_json
-from tensorflow.keras.preprocessing.sequence import pad_sequences
+from transformers import ElectraTokenizer, ElectraForSequenceClassification
 from dotenv import load_dotenv
 import os
 
@@ -27,15 +25,12 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-scaler = joblib.load("scaler.pkl")
+# Загрузка предобученной модели ELECTRA
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model_name = "google/electra-small-discriminator"
+model = ElectraForSequenceClassification.from_pretrained("./saved_model").to(device)
+tokenizer = ElectraTokenizer.from_pretrained("./saved_model")
 
-model = tf.keras.models.load_model("bilstm_reviewguard.h5")
-
-model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-
-with open("tokenizer.json", "r") as f:
-    tokenizer_data = f.read()
-tokenizer = tokenizer_from_json(tokenizer_data)
 
 nltk.download("stopwords")
 stop_words = set(stopwords.words("english"))
@@ -49,10 +44,8 @@ def clean_text(text):
     return " ".join(words)
 
 def preprocess_text(text):
-    sequence = tokenizer.texts_to_sequences([text])
-    padded_sequence = pad_sequences(sequence, maxlen=MAX_SEQUENCE_LENGTH, padding="post", truncating="post")
-    return padded_sequence
-
+    encoding = tokenizer(text, truncation=True, padding=True, max_length=128, return_tensors="pt").to(device)
+    return encoding
 
 # === Функция для генерации дополнительных признаков ===
 def extract_features(text):
@@ -85,15 +78,13 @@ async def send_help(message: Message):
 @dp.message()
 async def classify_review(message: Message):
     text = message.text
+    text_input = preprocess_text(text)
 
-    text_fresh = clean_text(text)
-    text_input = preprocess_text(text_fresh)
-    features_input = extract_features(text_fresh)
-
-    prediction = model.predict([text_input, features_input])[0][0]
+    with torch.no_grad():
+        outputs = model(**text_input)
+        prediction = torch.softmax(outputs.logits, dim=1)[:, 1].item()
 
     sentiment = "❌ Фейковый отзыв" if prediction < 0.5 else "✅ Настоящий отзыв"
-
     await message.answer(sentiment)
 
 async def main():
